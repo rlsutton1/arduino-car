@@ -63,7 +63,7 @@ class MotorController {
 
 
 
-double   motor2target = 30;
+double   motor2target = 50;
 
 void setup() {
   // put your setup code here, to run once:
@@ -101,7 +101,8 @@ class MPid {
                                currentAccel) / max(1, abs(currentAccel)));
 
       // ensure throttleScalling stays within the bounds.
-      throttleScaling = min(throttleResponse, throttleScaling);
+      double throttleResponseLimitScaler = 4.0;
+      throttleScaling = min(throttleResponse * throttleResponseLimitScaler, throttleScaling);
       throttleScaling = max(1, throttleScaling);
 
       // calculate the throttle adjustment.
@@ -147,15 +148,15 @@ void loop() {
   double throttle = mpid.pid(motor2target, speed);
 
   // traction control logic
-  
+
   // progressively increase throttle limit back to 1
   m1tcs = min(1, m1tcs + 0.05);
   m2tcs = min(1, m2tcs + 0.05);
-  
+
   double absSp1 = abs(sp1);
   double absSp2 = abs(sp2);
 
-  double maxSlip = 1.45;
+  double maxSlip = 1.8;
 
   // check both wheels are turning fast enought to be able to detect slip
   if (absSp1 > 5 && absSp2 > 5)
@@ -177,18 +178,16 @@ void loop() {
   motor1.setSpeed(-1 * throttle * m1tcs);
   motor2.setSpeed(throttle * m2tcs);
 
-  
-
-
-
   ticks++;
   if (ticks % 10 == 0)
   {
-    Serial.print(motor2SpeedMonitor.getPosition());
+    Serial.print(sp1);
+    Serial.print(' ');
+    Serial.print(sp2);
+    Serial.print(' ');
+    Serial.print(speed);
     Serial.print(' ');
     Serial.print(motor2target);
-    Serial.print(' ');
-    Serial.print(motor2SpeedMonitor.getSpeed());
     Serial.print(' ');
     Serial.print(throttle);
     Serial.println();
