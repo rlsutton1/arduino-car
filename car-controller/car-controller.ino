@@ -104,11 +104,17 @@ class MPid {
       double throttleResponseLimitScaler = 2.0;
       if (signum(currentAccel) != signum(delta))
       {
-        // more aggressive if we are accellerating in the wrong direction
-        double throttleResponseLimitScaler = 6.0;
+        //unlimited if we are accellerating in the wrong direction
+        throttleResponseLimitScaler = 10000.0;
       }
 
+      // apply throttleResponseLimitScaler
       throttleScaling = min(throttleResponse * throttleResponseLimitScaler, throttleScaling);
+      
+      // never more than a quarter throttle adjustment otherwise we will overshoot
+      throttleScaling = min(255.0/4.0,throttleScaling);
+
+      // always atleast 1 so we always converge
       throttleScaling = max(1, throttleScaling);
 
       // calculate the throttle adjustment.
@@ -162,10 +168,10 @@ void loop() {
   double absSp1 = abs(sp1);
   double absSp2 = abs(sp2);
 
-  double maxSlip = 1.8;
+  double maxSlip = 1.5;
 
   // check both wheels are turning fast enought to be able to detect slip
-  if (absSp1 > 5 && absSp2 > 5)
+  if (absSp1 + absSp2 > 10)
   {
     // check if motor 1 is slipping
     if (absSp1 > maxSlip * absSp2)
