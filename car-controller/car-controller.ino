@@ -1,5 +1,7 @@
 #include <Encoder.h>
+#include <Servo.h>
 
+Servo myservo;
 
 class SpeedMonitor {
   private:
@@ -68,6 +70,7 @@ double   motor2target = 50;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
+  myservo.attach(9);
 }
 
 long ticks = 0;
@@ -147,9 +150,24 @@ double m1tcs = 1.0;
 double m2tcs = 1.0;
 boolean slip = false;
 
+int loopCount = 0;
+
 void loop() {
   // put your main code here, to run repeatedly:
 
+  loopCount++;
+
+  if (loopCount % 10000 > 7000)
+  {
+    // range is 0 to 180 degrees
+    myservo.write(45);
+  } else  if (loopCount % 10000 > 3000)
+  {
+    myservo.write(90);
+  } else
+  {
+    myservo.write(135);
+  }
 
   motor1SpeedMonitor.readEncoder();
   motor2SpeedMonitor.readEncoder();
