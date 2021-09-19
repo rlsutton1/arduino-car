@@ -101,7 +101,13 @@ class MPid {
                                currentAccel) / max(1, abs(currentAccel)));
 
       // ensure throttleScalling stays within the bounds.
-      double throttleResponseLimitScaler = 4.0;
+      double throttleResponseLimitScaler = 2.0;
+      if (signum(currentAccel) != signum(delta))
+      {
+        // more aggressive if we are accellerating in the wrong direction
+        double throttleResponseLimitScaler = 6.0;
+      }
+
       throttleScaling = min(throttleResponse * throttleResponseLimitScaler, throttleScaling);
       throttleScaling = max(1, throttleScaling);
 
@@ -175,6 +181,11 @@ void loop() {
     }
   }
 
+  // normalize tcs - either m1 or m2 should always = 1
+  double tcsNormalizer = 1.0 / max(max(m1tcs, m2tcs), 0.01);
+  m1tcs = m1tcs * tcsNormalizer;
+  m2tcs = m2tcs * tcsNormalizer;
+
   motor1.setSpeed(-1 * throttle * m1tcs);
   motor2.setSpeed(throttle * m2tcs);
 
@@ -182,7 +193,7 @@ void loop() {
   if (ticks % 10 == 0)
   {
     Serial.print(sp1);
-    Serial.print(' ');
+    Serial.print(" 23 ");
     Serial.print(sp2);
     Serial.print(' ');
     Serial.print(speed);
