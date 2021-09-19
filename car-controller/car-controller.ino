@@ -110,9 +110,9 @@ class MPid {
 
       // apply throttleResponseLimitScaler
       throttleScaling = min(throttleResponse * throttleResponseLimitScaler, throttleScaling);
-      
+
       // never more than a quarter throttle adjustment otherwise we will overshoot
-      throttleScaling = min(255.0/4.0,throttleScaling);
+      throttleScaling = min(255.0 / 4.0, throttleScaling);
 
       // always atleast 1 so we always converge
       throttleScaling = max(1, throttleScaling);
@@ -145,6 +145,7 @@ MPid mpid = MPid();
 
 double m1tcs = 1.0;
 double m2tcs = 1.0;
+boolean slip = false;
 
 void loop() {
   // put your main code here, to run repeatedly:
@@ -178,12 +179,14 @@ void loop() {
     {
       // reduce power of motor 1
       m1tcs = m1tcs * 0.5;
+      slip = true;
     }
     // check if motor 2 is slipping
     if (absSp2 > maxSlip * absSp1)
     {
       //reduce power of motor2
       m2tcs = m2tcs * 0.5;
+      slip = true;
     }
   }
 
@@ -198,16 +201,20 @@ void loop() {
   ticks++;
   if (ticks % 10 == 0)
   {
-    Serial.print(sp1);
-    Serial.print(" 23 ");
-    Serial.print(sp2);
+    Serial.print(slip);
     Serial.print(' ');
-    Serial.print(speed);
+    Serial.print((int)sp1);
+    Serial.print(" ");
+    Serial.print((int)sp2);
     Serial.print(' ');
-    Serial.print(motor2target);
+    Serial.print((int)speed);
+    Serial.print(' ');
+    Serial.print((int)motor2target);
     Serial.print(' ');
     Serial.print(throttle);
+
     Serial.println();
+    slip = false;
   }
   if (Serial.available() > 2) {
     motor2target = Serial.parseInt();
