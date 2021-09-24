@@ -1,7 +1,15 @@
 #include <Encoder.h>
 #include <Servo.h>
+#include <SerialCommands.h>
 
-Servo myservo;
+double signum(double value)
+{
+  if (value > 0)
+    return 1;
+  if (value < 0)
+    return -1;
+  return 0;
+}
 
 class SpeedMonitor {
   private:
@@ -65,15 +73,8 @@ class MotorController {
 
 
 
-double   motor2target = 50;
 
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(9600);
-  myservo.attach(9);
-}
 
-long ticks = 0;
 
 class MPid {
 
@@ -152,26 +153,80 @@ boolean slip = false;
 
 int loopCount = 0;
 
+long ticks = 0;
+double   motor2target = 50;
+Servo myservo;
+
+int targetSteeringAngle = 90;
+int steeringAngle = 90;
+
+
+void cmd_unrecognized(SerialCommands* sender, const char* cmd)
+{
+  sender->GetSerial()->print("Unrecognized command [");
+  sender->GetSerial()->print(cmd);
+  sender->GetSerial()->println("]");
+}
+
+void cmd_speed(SerialCommands* sender)
+{
+  //Note: Every call to Next moves the pointer to next parameter
+
+  char* port_str = sender->Next();
+  if (port_str == NULL)
+  {
+    sender->GetSerial()->println("ERROR NO_PORT");
+    return;
+  }
+
+  motor2target = atoi(port_str);
+
+}
+
+void cmd_steer(SerialCommands* sender)
+{
+  //Note: Every call to Next moves the pointer to next parameter
+  Serial.print("In steer");
+  char* port_str = sender->Next();
+  if (port_str == NULL)
+  {
+    sender->GetSerial()->println("ERROR NO_PORT");
+    return;
+  }
+
+  targetSteeringAngle = atoi(port_str);
+  Serial.print("angle set");
+
+}
+
+char serial_command_buffer_[32];
+SerialCommands serial_commands_(&Serial, serial_command_buffer_, sizeof(serial_command_buffer_), "\n", " ");
+
+
+SerialCommand cmd_steer_("steer", cmd_steer);
+SerialCommand cmd_speed_("speed", cmd_speed);
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  myservo.attach(9);
+
+  serial_commands_.SetDefaultHandler(cmd_unrecognized);
+  serial_commands_.AddCommand(&cmd_speed_);
+  serial_commands_.AddCommand(&cmd_steer_);
+  
+}
+
 void loop() {
   // put your main code here, to run repeatedly:
 
   loopCount++;
+  serial_commands_.ReadSerial();
 
-  if (loopCount > 200)
-  {
-    // range is 0 to 180 degrees
-    myservo.write(45);
-  } else  if (loopCount  > 100)
-  {
-    myservo.write(90);
-  } else
-  {
-    myservo.write(135);
-  }
-  if (loopCount > 300)
-  {
-    loopCount = 0;
-  }
+  // move steering towards the targetSteeringAngle
+  steeringAngle += signum(targetSteeringAngle - steeringAngle)*5;
+  
+  myservo.write(steeringAngle);
 
   motor1SpeedMonitor.readEncoder();
   motor2SpeedMonitor.readEncoder();
@@ -217,6 +272,11 @@ void loop() {
   m1tcs = m1tcs * tcsNormalizer;
   m2tcs = m2tcs * tcsNormalizer;
 
+  if (motor2target==0)
+  {
+    throttle =0 ;
+  }
+
   motor1.setSpeed(-1 * throttle * m1tcs);
   motor2.setSpeed(throttle * m2tcs);
 
@@ -234,21 +294,12 @@ void loop() {
     Serial.print((int)motor2target);
     Serial.print(' ');
     Serial.print(throttle);
+    Serial.print(' ');
+    Serial.print(steeringAngle);
 
     Serial.println();
     slip = false;
   }
-  if (Serial.available() > 2) {
-    motor2target = Serial.parseInt();
-  }
+ 
   delay(50);
-}
-
-double signum(double value)
-{
-  if (value > 0)
-    return 1;
-  if (value < 0)
-    return -1;
-  return 0;
 }
