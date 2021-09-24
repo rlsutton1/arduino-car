@@ -157,16 +157,20 @@ void loop() {
 
   loopCount++;
 
-  if (loopCount % 10000 > 7000)
+  if (loopCount > 200)
   {
     // range is 0 to 180 degrees
     myservo.write(45);
-  } else  if (loopCount % 10000 > 3000)
+  } else  if (loopCount  > 100)
   {
     myservo.write(90);
   } else
   {
     myservo.write(135);
+  }
+  if (loopCount > 300)
+  {
+    loopCount = 0;
   }
 
   motor1SpeedMonitor.readEncoder();
