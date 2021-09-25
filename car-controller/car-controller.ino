@@ -157,8 +157,8 @@ long ticks = 0;
 double   motor2target = 50;
 Servo myservo;
 
-int targetSteeringAngle = 90;
-int steeringAngle = 90;
+int targetSteeringAngle = 70;
+int steeringAngle = 70;
 
 
 void cmd_unrecognized(SerialCommands* sender, const char* cmd)
@@ -283,6 +283,7 @@ void loop() {
   ticks++;
   if (ticks % 10 == 0)
   {
+    Serial.print("Data: ");
     Serial.print(slip);
     Serial.print(' ');
     Serial.print((int)sp1);
