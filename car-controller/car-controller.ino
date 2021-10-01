@@ -154,7 +154,7 @@ boolean slip = false;
 int loopCount = 0;
 
 long ticks = 0;
-double   motor2target = 50;
+double   motor2target = 0;
 Servo myservo;
 
 int targetSteeringAngle = 70;
@@ -210,6 +210,12 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   myservo.attach(9);
+
+   for (int pos = 0; pos <= 180; pos += 1) { 
+    // in steps of 1 degree
+    myservo.write(pos);              
+    delay(15);                       
+  }
 
   serial_commands_.SetDefaultHandler(cmd_unrecognized);
   serial_commands_.AddCommand(&cmd_speed_);
