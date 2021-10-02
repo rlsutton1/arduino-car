@@ -154,7 +154,7 @@ boolean slip = false;
 int loopCount = 0;
 
 long ticks = 0;
-double   motor2target = 0;
+double   targetSpeed = 0;
 Servo myservo;
 
 int targetSteeringAngle = 70;
@@ -179,7 +179,7 @@ void cmd_speed(SerialCommands* sender)
     return;
   }
 
-  motor2target = atoi(port_str);
+  targetSpeed = atoi(port_str);
 
 }
 
@@ -241,7 +241,7 @@ void loop() {
   double sp2 = motor2SpeedMonitor.getSpeed();
 
   double speed = (sp1 + sp2) / 2.0;
-  double throttle = mpid.pid(motor2target, speed);
+  double throttle = mpid.pid(targetSpeed, speed);
 
   // traction control logic
 
@@ -278,7 +278,7 @@ void loop() {
   m1tcs = m1tcs * tcsNormalizer;
   m2tcs = m2tcs * tcsNormalizer;
 
-  if (motor2target==0)
+  if (targetSpeed==0)
   {
     throttle =0 ;
   }
@@ -298,7 +298,7 @@ void loop() {
     Serial.print(' ');
     Serial.print((int)speed);
     Serial.print(' ');
-    Serial.print((int)motor2target);
+    Serial.print((int)targetSpeed);
     Serial.print(' ');
     Serial.print(throttle);
     Serial.print(' ');
