@@ -11,7 +11,7 @@ double signum(double value)
   return 0;
 }
 
-class SpeedMonitor {
+class MotorMonitor {
   private:
     double speed = 0.0;
     double position = 0.0;
@@ -19,7 +19,7 @@ class SpeedMonitor {
 
 
   public:
-    SpeedMonitor(Encoder *encoder)
+    MotorMonitor(Encoder *encoder)
     {
 
       this->encoder = encoder;
@@ -85,6 +85,11 @@ class MPid {
 
   public:
 
+    void clear()
+    {
+      throttle = 0;
+    }
+
     double pid(double targetSpeed, double measuredSpeed)
     {
       // calculate current accelleration
@@ -142,9 +147,9 @@ class MPid {
 MotorController motor2 = MotorController(4, 5);
 MotorController motor1 = MotorController(7, 6);
 Encoder encoder1(0, 1);
-SpeedMonitor motor1SpeedMonitor(&encoder1);
+MotorMonitor motor1Monitor(&encoder1);
 Encoder encoder2(2, 3);
-SpeedMonitor motor2SpeedMonitor(&encoder2);
+MotorMonitor motor2Monitor(&encoder2);
 MPid mpid = MPid();
 
 double m1tcs = 1.0;
@@ -159,6 +164,8 @@ Servo myservo;
 
 int targetSteeringAngle = 70;
 int steeringAngle = 70;
+int minSteer = 35;
+int maxSteer = 145;
 
 
 void cmd_unrecognized(SerialCommands* sender, const char* cmd)
@@ -175,7 +182,7 @@ void cmd_speed(SerialCommands* sender)
   char* port_str = sender->Next();
   if (port_str == NULL)
   {
-    sender->GetSerial()->println("ERROR NO_PORT");
+    sender->GetSerial()->println("ERROR NO SPEED");
     return;
   }
 
@@ -186,15 +193,25 @@ void cmd_speed(SerialCommands* sender)
 void cmd_steer(SerialCommands* sender)
 {
   //Note: Every call to Next moves the pointer to next parameter
-  Serial.print("In steer");
   char* port_str = sender->Next();
   if (port_str == NULL)
   {
-    sender->GetSerial()->println("ERROR NO_PORT");
+    sender->GetSerial()->println("ERROR NO ANGLE");
     return;
   }
 
-  targetSteeringAngle = atoi(port_str);
+  int tmp = atoi(port_str);
+  if (tmp > minSteer and tmp < maxSteer)
+  {
+    targetSteeringAngle = atoi(port_str);
+  } else
+  {
+    sender->GetSerial()->print("Invalid steering angle, valid range is ");
+    sender->GetSerial()->print(minSteer);
+    sender->GetSerial()->print( "<= x >= ");
+    sender->GetSerial()->println(maxSteer);
+  }
+
   Serial.print("angle set");
 
 }
@@ -211,17 +228,28 @@ void setup() {
   Serial.begin(9600);
   myservo.attach(9);
 
-   for (int pos = 0; pos <= 180; pos += 1) { 
+  int pos = 0;
+  for (pos = minSteer; pos <= maxSteer; pos += 1) {
     // in steps of 1 degree
-    myservo.write(pos);              
-    delay(15);                       
+    myservo.write(pos);
+    delay(10);
+  }
+  while (pos != targetSteeringAngle)
+  {
+    pos += signum(targetSteeringAngle - pos);
+    // in steps of 1 degree
+    myservo.write(pos);
+    delay(10);
   }
 
   serial_commands_.SetDefaultHandler(cmd_unrecognized);
   serial_commands_.AddCommand(&cmd_speed_);
   serial_commands_.AddCommand(&cmd_steer_);
-  
+
 }
+
+double lastPosition = -1;
+unsigned long lastTime = -1;
 
 void loop() {
   // put your main code here, to run repeatedly:
@@ -230,15 +258,15 @@ void loop() {
   serial_commands_.ReadSerial();
 
   // move steering towards the targetSteeringAngle
-  steeringAngle += signum(targetSteeringAngle - steeringAngle)*5;
-  
+  steeringAngle += signum(targetSteeringAngle - steeringAngle) * 5;
+
   myservo.write(steeringAngle);
 
-  motor1SpeedMonitor.readEncoder();
-  motor2SpeedMonitor.readEncoder();
+  motor1Monitor.readEncoder();
+  motor2Monitor.readEncoder();
 
-  double sp1 = motor1SpeedMonitor.getSpeed();
-  double sp2 = motor2SpeedMonitor.getSpeed();
+  double sp1 = motor1Monitor.getSpeed();
+  double sp2 = motor2Monitor.getSpeed();
 
   double speed = (sp1 + sp2) / 2.0;
   double throttle = mpid.pid(targetSpeed, speed);
@@ -252,10 +280,10 @@ void loop() {
   double absSp1 = abs(sp1);
   double absSp2 = abs(sp2);
 
-  double maxSlip = 1.5;
+  double maxSlip = 1.85;
 
   // check both wheels are turning fast enought to be able to detect slip
-  if (absSp1 + absSp2 > 10)
+  if (absSp1 + absSp2 > 18)
   {
     // check if motor 1 is slipping
     if (absSp1 > maxSlip * absSp2)
@@ -278,35 +306,52 @@ void loop() {
   m1tcs = m1tcs * tcsNormalizer;
   m2tcs = m2tcs * tcsNormalizer;
 
-  if (targetSpeed==0)
+  if (targetSpeed == 0)
   {
-    throttle =0 ;
+    throttle = 0 ;
+    mpid.clear();
   }
 
   motor1.setSpeed(-1 * throttle * m1tcs);
   motor2.setSpeed(throttle * m2tcs);
 
   ticks++;
-  if (ticks % 10 == 0)
+  double position = ((motor1Monitor.getPosition() + motor2Monitor.getPosition()) / 2.0);
+
+  if (millis() > lastTime + 300 && position != lastPosition)
   {
-    Serial.print("Data: ");
-    Serial.print(slip);
-    Serial.print(" m1:");
-    Serial.print((int)sp1);
-    Serial.print(" m2:");
-    Serial.print((int)sp2);
-    Serial.print(" sp:");
+    lastTime = millis();
+    lastPosition = position;
+
+    Serial.print("Time:");
+    Serial.print(millis());
+
+    Serial.print(" Speed:");
     Serial.print((int)speed);
-    Serial.print(" tsp:");
-    Serial.print((int)targetSpeed);
-    Serial.print(" th:");
-    Serial.print(throttle);
-    Serial.print(" st:");
+
+    Serial.print(" Steer:");
     Serial.print(steeringAngle);
+
+    Serial.print(" Slip:");
+    if (slip == true)
+    {
+      Serial.print("1");
+    } else
+    {
+      Serial.print("0");
+    }
+
+    Serial.print(" Dist:");
+    Serial.print(motor1Monitor.getPosition());
+    Serial.print(" ");
+    Serial.print(motor2Monitor.getPosition());
+    Serial.print(" ");
+    Serial.print((int)position);
+
 
     Serial.println();
     slip = false;
   }
- 
+
   delay(50);
 }
