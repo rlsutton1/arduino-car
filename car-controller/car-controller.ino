@@ -291,17 +291,17 @@ void loop() {
   {
     Serial.print("Data: ");
     Serial.print(slip);
-    Serial.print(' ');
+    Serial.print(" m1:");
     Serial.print((int)sp1);
-    Serial.print(" ");
+    Serial.print(" m2:");
     Serial.print((int)sp2);
-    Serial.print(' ');
+    Serial.print(" sp:");
     Serial.print((int)speed);
-    Serial.print(' ');
+    Serial.print(" tsp:");
     Serial.print((int)targetSpeed);
-    Serial.print(' ');
+    Serial.print(" th:");
     Serial.print(throttle);
-    Serial.print(' ');
+    Serial.print(" st:");
     Serial.print(steeringAngle);
 
     Serial.println();
