@@ -166,6 +166,7 @@ int targetSteeringAngle = 70;
 int steeringAngle = 70;
 int minSteer = 35;
 int maxSteer = 145;
+boolean enableDebug = false;
 
 
 void cmd_unrecognized(SerialCommands* sender, const char* cmd)
@@ -187,6 +188,12 @@ void cmd_speed(SerialCommands* sender)
   }
 
   targetSpeed = atoi(port_str);
+
+}
+
+void cmd_debug(SerialCommands* sender)
+{
+  enableDebug = true;
 
 }
 
@@ -219,9 +226,9 @@ void cmd_steer(SerialCommands* sender)
 char serial_command_buffer_[32];
 SerialCommands serial_commands_(&Serial, serial_command_buffer_, sizeof(serial_command_buffer_), "\n", " ");
 
-
 SerialCommand cmd_steer_("steer", cmd_steer);
 SerialCommand cmd_speed_("speed", cmd_speed);
+SerialCommand cmd_debug_("debug", cmd_debug);
 
 void setup() {
   // put your setup code here, to run once:
@@ -245,6 +252,7 @@ void setup() {
   serial_commands_.SetDefaultHandler(cmd_unrecognized);
   serial_commands_.AddCommand(&cmd_speed_);
   serial_commands_.AddCommand(&cmd_steer_);
+  serial_commands_.AddCommand(&cmd_debug_);
 
 }
 
@@ -282,7 +290,7 @@ void loop() {
 
   double maxSlip = 1.85;
 
-  // check both wheels are turning fast enought to be able to detect slip
+  // check both wheels are turning fast enough to be able to detect slip
   if (absSp1 + absSp2 > 18)
   {
     // check if motor 1 is slipping
@@ -348,6 +356,23 @@ void loop() {
     Serial.print(" ");
     Serial.print((int)position);
 
+    if (enableDebug == true)
+    {
+      Serial.print(" Throttle:");
+      Serial.print((int)throttle);
+
+      Serial.print(" sp1:");
+      Serial.print((int)sp1);
+
+      Serial.print(" sp2:");
+      Serial.print((int)sp2);
+
+      Serial.print(" m1tcs:");
+      Serial.print((int)(m1tcs * 100.0));
+
+      Serial.print(" m2tcs:");
+      Serial.print((int)(m2tcs * 100.0));
+    }
 
     Serial.println();
     slip = false;
